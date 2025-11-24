@@ -1,5 +1,5 @@
 // src/lib/kontur/parsing.ts
-import type { Block, Point, Kontur, Severity} from "./types"
+import type { Block, Point, Kontur, Severity } from "./types";
 import {
   ALLOWED_OFU,
   AGRI_CLASSES,
@@ -15,6 +15,7 @@ export function normalizeOfu(ofu: string): string {
   if (v.length === 1) return v.toUpperCase();
   return v[0].toUpperCase() + v.slice(1);
 }
+
 export function normalizeKlasa(kl?: string | null): string | null {
   const raw = (kl ?? "").trim();
   if (!raw) return null;
@@ -177,7 +178,6 @@ export function computeAreaM2(points: Point[]): number | null {
   return Math.abs(s) * 0.5;
 }
 
-
 export function buildKonturFromBlock(block: Block): Kontur {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -328,8 +328,6 @@ export function suggestionsForKontur(k: Kontur): string[] {
 
   return [...sugs];
 }
-
-export type Severity = "ok" | "warning" | "error";
 
 export function severity(k: Kontur): Severity {
   if (k.errors.length > 0) return "error";
