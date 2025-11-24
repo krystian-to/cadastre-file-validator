@@ -1,0 +1,71 @@
+
+export const ALLOWED_OFU = new Set([
+  "R", // grunty orne
+  "Ł",
+  "Łs",
+  "Ps",
+  "Ls",
+  "B",
+  "Bp",
+  "Ba",
+  "Bi",
+  "BiP",
+  "Br",
+  "N",
+  "W",
+  "dr",
+  "Ti",
+  "Tr",
+  "Tk",
+  "Tp",
+  "Ws",
+  "Wp",
+  "Lz",
+  "S",
+]);
+
+export const AGRI_CLASSES = new Set([
+  "I",
+  "II",
+  "III",
+  "IIIa",
+  "IIIb",
+  "IV",
+  "IVa",
+  "IVb",
+  "V",
+  "VI",
+  "VIz",
+]);
+
+export const FOREST_CLASSES = new Set([
+  "I",
+  "II",
+  "III",
+  "IIIa",
+  "IIIb",
+  "IV",
+  "IVa",
+  "IVb",
+  "V",
+  "VI",
+  "VIz",
+]);
+
+export const NON_CLASSIFIED_OFU = new Set([
+  "B",
+  "Bp",
+  "Ba",
+  "Bi",
+  "BiP",
+  "Br",
+  "N",
+  "W",
+  "dr",
+  "Ti",
+  "Tr",
+  "Tk",
+  "Tp",
+  "Ws",
+  "Wp",
+]);
