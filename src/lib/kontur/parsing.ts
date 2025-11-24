@@ -1,5 +1,5 @@
 // src/lib/kontur/parsing.ts
-import type { Block, Point, Kontur } from "./types";
+import type { Block, Point, Kontur, Severity} from "./types"
 import {
   ALLOWED_OFU,
   AGRI_CLASSES,
