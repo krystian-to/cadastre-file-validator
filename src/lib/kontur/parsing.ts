@@ -1,5 +1,4 @@
-// src/lib/kontur/parsing.ts
-import type { Block, Point, Kontur, Severity } from "./types";
+import type { Block, Point, Kontur } from "./types";
 import {
   ALLOWED_OFU,
   AGRI_CLASSES,
@@ -246,13 +245,17 @@ export function validateKontur(k: Kontur): void {
 
   if (!ofu) {
     k.errors.push("Brak kodu użytku (OFU) w nagłówku.");
-  } else if (!ALLOWED_OFU.has(ofu)) {
+    return;
+  }
+
+  if (!ALLOWED_OFU.has(ofu)) {
     k.errors.push(
       `Nieznany kod użytku: ${ofu} (sprawdź zgodność z EGiB / katalogiem OFU).`,
     );
+    return;
   }
 
-  if (ofu && NON_CLASSIFIED_OFU.has(ofu)) {
+  if (NON_CLASSIFIED_OFU.has(ofu)) {
     if (klasa) {
       k.warnings.push(
         `Użytek ${ofu} zwykle nie ma klasy bonitacyjnej — rozważ usunięcie '${klasa}'.`,
@@ -266,7 +269,10 @@ export function validateKontur(k: Kontur): void {
         `Dodatkowa etykieta '${extraLabel}' wygląda na klasę — usuń ją dla ${ofu}.`,
       );
     }
-  } else if (ofu === "Ls") {
+    return;
+  }
+
+  if (ofu === "Ls") {
     if (klasa && !FOREST_CLASSES.has(klasa)) {
       k.errors.push(
         `Niepoprawna klasa dla Ls: '${klasa}'. Dopuszczalne: ${[
@@ -274,7 +280,7 @@ export function validateKontur(k: Kontur): void {
         ].join(", ")}.`,
       );
     }
-  } else if (ofu) {
+  } else {
     if (!klasa) {
       k.errors.push(`Użytek ${ofu} powinien mieć klasę (np. ${ofu}IVa).`);
     } else if (!AGRI_CLASSES.has(klasa)) {
@@ -300,34 +306,121 @@ export function validateKontur(k: Kontur): void {
   }
 }
 
+function levenshtein(a: string, b: string): number {
+  const s = a;
+  const t = b;
+  const m = s.length;
+  const n = t.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    new Array<number>(n + 1),
+  );
+  for (let i = 0; i <= m; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= n; j += 1) dp[0][j] = j;
+  for (let i = 1; i <= m; i += 1) {
+    for (let j = 1; j <= n; j += 1) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return dp[m][n];
+}
+
+function closestClass(input: string, allowed: Set<string>): string | null {
+  const normInput = normalizeKlasa(input);
+  if (!normInput) return null;
+  let best: string | null = null;
+  let bestDist = Infinity;
+  for (const candidate of allowed) {
+    const d = levenshtein(normInput, candidate);
+    if (d < bestDist) {
+      bestDist = d;
+      best = candidate;
+    }
+  }
+  if (bestDist > 2) return null;
+  return best;
+}
+
+function closestOfu(input: string, allowed: Set<string>): string | null {
+  const normInput = normalizeOfu(input);
+  if (!normInput) return null;
+  let best: string | null = null;
+  let bestDist = Infinity;
+  for (const candidate of allowed) {
+    const d = levenshtein(normInput, candidate);
+    if (d < bestDist) {
+      bestDist = d;
+      best = candidate;
+    }
+  }
+  if (bestDist > 2) return null;
+  return best;
+}
+
 export function suggestionsForKontur(k: Kontur): string[] {
   const sugs = new Set<string>();
 
   for (const e of k.errors) {
-    if (e.includes("powinien mieć klasę") && k.ofu) {
-      sugs.add(`Uzupełnij klasę, np. '${k.ofu}IVa' zgodnie z UTKG.`);
+    if (e.includes("Nieznany kod użytku") && k.ofu) {
+      const best = closestOfu(k.ofu, ALLOWED_OFU);
+      if (best) {
+        sugs.add(
+          `Zmień kod użytku z '${k.ofu}' na '${best}' (najbliższy dopuszczalny kod OFU).`,
+        );
+      } else {
+        sugs.add(
+          "Popraw kod użytku zgodnie z katalogiem OFU (np. R, Ł, Ps, Ls, Lz, B, N, W itd.).",
+        );
+      }
     }
-    if (e.includes("Niepoprawna klasa")) {
+
+    if (e.includes("powinien mieć klasę") && k.ofu) {
       sugs.add(
-        "Zmień klasę na jedną z: I, II, III, IIIa, IIIb, IV, IVa, IVb, V, VI, VIz.",
+        `Dodaj poprawną klasę bonitacyjną dla użytku ${k.ofu} zgodnie z operatem klasyfikacyjnym.`,
       );
     }
+
+    if (e.includes("Niepoprawna klasa") && k.klasa && k.ofu) {
+      const allowed = k.ofu === "Ls" ? FOREST_CLASSES : AGRI_CLASSES;
+      const best = closestClass(k.klasa, allowed);
+      if (best) {
+        sugs.add(
+          `Zmień klasę z '${k.klasa}' na '${best}' (najbliższa poprawna wartość).`,
+        );
+      } else {
+        sugs.add(
+          "Zmień klasę na jedną z dopuszczalnych wartości (I, II, III, IIIa, IIIb, IV, IVa, IVb, V, VI, VIz).",
+        );
+      }
+    }
+
     if (e.includes("Powierzchnia Ls")) {
       sugs.add(
-        "Scal/zmień granice, aby Ls ≥ 0,10 ha, lub zmień użytek na nieleśny.",
+        "Scal lub zmień granice konturu, aby Ls miała co najmniej 0,10 ha, albo zmień użytek na nieleśny.",
       );
     }
+
     if (e.includes("Niepoprawny format nagłówka")) {
-      sugs.add("Nagłówek w formacie 'NN-XX/OFUklasa', np. '23-1/RIVa'.");
+      sugs.add(
+        "Popraw nagłówek do formatu 'NN-XX/OFUklasa', np. '23-1/RIVa' lub '23-3/B RIIIb'.",
+      );
     }
   }
 
   if (k.extraLabel && k.ofu && k.ofu !== "R") {
-    sugs.add("Usuń mieszane oznaczenia (pozostaw wyłącznie właściwy OFU).");
+    sugs.add("Usuń mieszane oznaczenia i pozostaw wyłącznie właściwy OFU.");
   }
 
   return [...sugs];
 }
+
+export type Severity = "ok" | "warning" | "error";
 
 export function severity(k: Kontur): Severity {
   if (k.errors.length > 0) return "error";

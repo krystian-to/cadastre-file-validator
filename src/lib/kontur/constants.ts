@@ -1,6 +1,5 @@
-
 export const ALLOWED_OFU = new Set([
-  "R", // grunty orne
+  "R",
   "Ł",
   "Łs",
   "Ps",
@@ -68,4 +67,6 @@ export const NON_CLASSIFIED_OFU = new Set([
   "Tp",
   "Ws",
   "Wp",
+  "Lz",
+  "S",
 ]);
