@@ -1,4 +1,5 @@
-import type { Block, Point, Kontur } from "./types";
+import type { Block, Point, Kontur, Severity} from "./types";
+
 import {
   ALLOWED_OFU,
   AGRI_CLASSES,
@@ -420,7 +421,6 @@ export function suggestionsForKontur(k: Kontur): string[] {
   return [...sugs];
 }
 
-export type Severity = "ok" | "warning" | "error";
 
 export function severity(k: Kontur): Severity {
   if (k.errors.length > 0) return "error";
